@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Simple Map</title>
+    <!-- <script src="SafeMap.js" async></script> -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+    <meta name="viewport" content="initial-scale=1.0">
+    <meta charset="utf-8">
+    <script src="https://d3js.org/d3.v5.min.js"></script>
+    <style>
+      /* Always set the map height explicitly to define the size of the div
+       * element that contains the map. */
+      #map {
+        height: 100%;
+      }
+
+      #directionsPanel {
+        height: 100%;
+        float: right;
+        width: 390px;
+        overflow: auto;
+      }
+
+      #floating-panel {
+        position: absolute;
+        top: 10px;
+        left: 25%;
+        z-index: 5;
+        background-color: #fff;
+        padding: 5px;
+        border: 1px solid #999;
+        text-align: center;
+        font-family: 'Roboto','sans-serif';
+        line-height: 30px;
+        padding-left: 10px;
+      }
+      #floating-panel {
+        background-color: #fff;
+        border: 1px solid #999;
+        left: 25%;
+        padding: 5px;
+        position: absolute;
+        top: 10px;
+        z-index: 5;
+      }
+      /* Optional: Makes the sample page fill the window. */
+      html, body {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="floating-panel">
+      <input onclick="toggleHeatmap()" type="button" value="Switch to Parking Mode" id="myButton1"></input>
+    </div>
+    <div id="map"></div>
+    <div id="directionsPanel" style="float:right;width:30%;height 100%"></div>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyB24vZXe7W0nZ9R2oGHluzzWrmAMiCS1IM&libraries=geometry,visualization"></script>
+    <script>
+
+      var lat1 = 33.029288;
+      var lon1 = -96.937575;
+      var lat2 = 33.029155;
+      var lon2 = -96.937357;
+
+      var heatmap;
+      var carHeatMap;
+      var polyLines = [];
+
+		var sanFrancisco = new google.maps.LatLng(37.774546, -122.433523);
+		var pointA = 'EDDY ST AND BUCHANAN ST';
+    var pointB = 'Golden Gate Bridge';
+
+		map = new google.maps.Map(document.getElementById('map'), {
+		  center: sanFrancisco,
+		  zoom: 13,
+		  mapTypeId: 'roadmap'
+		});
+
+		directionsService = new google.maps.DirectionsService,
+	    directionsDisplay = new google.maps.DirectionsRenderer({
+	      map: map
+	    });
+
+		// get route from A to B
+
+		directionsDisplay.setPanel(document.getElementById('directionsPanel'));
+
+		calculateAndDisplayRoute(directionsService, directionsDisplay, pointA, pointB);
+
+    function calculateAndDisplayRoute(directionsService, directionsDisplay, pointA, pointB) {
+  	  directionsService.route({
+  	    origin: pointA,
+  	    destination: pointB,
+  	    provideRouteAlternatives: true,
+  	    travelMode: 'WALKING'
+  	  }, function(response, status) {
+  	  	if (status == google.maps.DirectionsStatus.OK) {
+  		    for(var i in  response.routes) {
+  		    	var line = new google.maps.Polyline({
+      				path: response.routes[i].overview_path,
+      				strokeColor: "#ff0000",
+      				strokeOpacity: 0.7,
+      				strokeWeight: 3
+      			});
+            polyLines.push(line);
+    			  line.setMap(map);
+    		  };
+  		    directionsDisplay.setDirections(response);
+  		} else {
+  	      window.alert('Directions request failed due to ' + status);
+  	    }
+
+      var geocoder = new google.maps.Geocoder();
+
+    var heatMapData = [];
+    var carHeatMapData = [];
+    var markers = [];
+    var carCrimes = new Set(['Vandalism', 'Burglary', 'Theft']);
+
+    var isLocationOnEdge = google.maps.geometry.poly.isLocationOnEdge;
+    var infoWindow = new google.maps.InfoWindow();
+    var image;
+
+    d3.csv("../static/Crime_data.csv").then(function(data) {
+      for (var i = 0; i < data.length; i++) {
+
+        var point = new google.maps.LatLng(data[i].Latitudes, data[i].Longitudes);
+
+        heatMapData.push({location: point, weight: data[i].Crime_weight});
+        if (carCrimes.has(data[i].Crime_Type)) {
+          carHeatMapData.push({location: point, weight: data[i].Crime_weight});
+        }
+
+        for (var j = 0; j < polyLines.length; j++) {
+          if (isLocationOnEdge(point, polyLines[j], 0.001)) {
+
+
+            switch(data[i].Crime_Type) {
+              case "Assault":
+                // code block
+                image = 'https://i.imgur.com/uy04NI1.jpg';
+                break;
+              case "Arrest":
+                // code block
+                image = 'https://i.imgur.com/uy04NI1.jpg';
+                break;
+              case "Vandalism":
+                // code block
+                image = 'https://i.imgur.com/4muf9Ua.png';
+                break;
+              case "Burglary":
+                // code block
+                image = 'https://i.imgur.com/P6KJcjI.png';
+                break;
+              case "Theft":
+                // code block
+                image = 'https://i.imgur.com/IZFnGcn.png';
+                break;
+              case "Robbery":
+                // code block
+                image = 'https://i.imgur.com/Y1aOM0J.jpg';
+                break;
+              case "Arson":
+                // code block
+                image = 'https://i.imgur.com/cEvQo8v.png';
+                break;
+              case "Other":
+                // code block
+                image = 'https://i.imgur.com/SNqooZ3.png';
+                break;
+              default:
+                break;
+            }
+
+            var realIm = {url: image,
+              scaledSize: new google.maps.Size(20,32),
+              origin: new google.maps.Point(0,0),
+              anchor: new google.maps.Point(0,32)};
+
+            markers.push(new google.maps.Marker({
+              position: point,
+              map: map,
+              icon: realIm
+            }));
+          }
+        }
+      }
+    });
+
+    heatmap = new google.maps.visualization.HeatmapLayer({
+      data: heatMapData,
+      map: map
+    });
+
+    carHeatMap = new google.maps.visualization.HeatmapLayer({
+      data: carHeatMapData,
+      map: null
+    });
+
+  	  });
+  	}
+
+    function toggleHeatmap() {
+      if (heatmap.getMap()) {
+        heatmap.setMap(null);
+        carHeatMap.setMap(map);
+        document.getElementById("myButton1").value="Switch to Walking Mode";
+      } else {
+        heatmap.setMap(map);
+        carHeatMap.setMap(null);
+        document.getElementById("myButton1").value="Switch to Parking Mode";
+      }
+    }
+
+    function imageChooser(crime) {
+
+    }
+
+    </script>
+  </body>
+</html>
